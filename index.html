@@ -86,7 +86,7 @@
         }
 
         .none {
-            font-size: 24px;
+            font-size: 20px;
             text-align: center;
         }
 
@@ -203,13 +203,11 @@
                 let notams = res.body.notams;
 
                 if (!notams) {
-                    console.error('Can\'t get NOTAMS.');
+                    console.error('Can not get NOTAMS.');
                     return;
                 }
 
                 const container = document.getElementById('container');
-
-                console.log(notams);
 
                 const currentDate = new Date();
                 notams = notams.filter(n => {
