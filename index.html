@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Notam Viewer</title>
+
+    <style>
+        html, body, div, span, applet, object, iframe,
+        h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+        a, abbr, acronym, address, big, cite, code,
+        del, dfn, em, img, ins, kbd, q, s, samp,
+        small, strike, strong, sub, sup, tt, var,
+        b, u, i, center,
+        dl, dt, dd, ol, ul, li,
+        fieldset, form, label, legend,
+        table, caption, tbody, tfoot, thead, tr, th, td,
+        article, aside, canvas, details, embed,
+        figure, figcaption, footer, header, hgroup,
+        main, menu, nav, output, ruby, section, summary,
+        time, mark, audio, video {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            font-size: 100%;
+            font: inherit;
+            vertical-align: baseline;
+            box-sizing: border-box;
+        }
+
+        /* HTML5 display-role reset for older browsers */
+        article, aside, details, figcaption, figure,
+        footer, header, hgroup, main, menu, nav, section {
+            display: block;
+        }
+
+        /* HTML5 hidden-attribute fix for newer browsers */
+        *[hidden] {
+            display: none;
+        }
+
+        html {
+            overflow: hidden;
+            font-family: Helvetica, Arial;
+        }
+
+        html, body {
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        body {
+            line-height: 1;
+        }
+
+        ol, ul {
+            list-style: none;
+        }
+
+        blockquote, q {
+            quotes: none;
+        }
+
+        blockquote:before, blockquote:after,
+        q:before, q:after {
+            content: '';
+            content: none;
+        }
+
+        table {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+        strong {
+            font-weight: 700;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .none {
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 2px;
+            display: inline-block;
+            margin: 1rem;
+            padding: 1rem;
+            position: relative;
+            width: calc(100% - 2rem);
+            color: #000;
+            text-decoration: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+            transition: all 0.3s cubic-bezier(.25, .8, .25, 1);
+        }
+
+        .card:hover {
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+        }
+
+        .card .title {
+            font-weight: 700;
+            font-size: 24px;
+        }
+
+        .card .full-width-split {
+            margin-bottom: 1rem;
+        }
+
+        .full-width-split {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .full-width-split > * {
+            display: inline-block;
+        }
+
+        .card .link {
+            margin-bottom: 1rem;
+            color: dodgerblue;
+            transition: color .2s ease;
+        }
+
+        .card .link:hover {
+            color: #000;
+        }
+
+        .card .restrictedAirspace {
+            margin: 2rem 0;
+        }
+
+        .card .restrictedAirspace li:not(.raT) {
+            padding-left: 5px;
+        }
+
+        .card .restrictedAirspace .raT {
+            margin-bottom: 0.5rem;
+        }
+
+        .card .start,
+        .card .end {
+            margin: 0.5rem 0;
+            font-size: 16px;
+        }
+
+        .card .author {
+            color: #999;
+            font-size: 14px;
+            text-align: right;
+            width: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <p class="none">There are no active NOTAMs</p>
+</div>
+
+<template>
+    <a class="notam card" href="#">
+        <div class="full-width-split">
+            <h4 class="title"></h4>
+            <span class="type"></span>
+        </div>
+        <p class="link">Go to Post</p>
+
+        <ul class="restrictedAirspace">
+            <li class="raT"><strong>Restricted Airspace</strong></li>
+        </ul>
+
+        <p class="start"><strong>In effect from</strong> </p>
+        <p class="end"><strong>Expires at</strong> </p>
+
+        <small class="author"></small>
+    </a>
+</template>
+
+<script type="application/javascript">
+    const Http = new XMLHttpRequest();
+    const url = 'https://core.vatpac.org/notams';
+    Http.open("GET", url);
+    Http.send();
+
+    Http.onreadystatechange = () => {
+        if (Http.readyState === 4 && Http.status === 200) {
+            const res = JSON.parse(Http.responseText);
+
+            if (res.request.result === 'success') {
+                let notams = res.body.notams;
+
+                if (!notams) {
+                    console.error('Can\'t get NOTAMS.');
+                    return;
+                }
+
+                const container = document.getElementById('container');
+
+                console.log(notams);
+
+                const currentDate = new Date();
+                notams = notams.filter(n => {
+                    const end = new Date(n.end);
+                    if (isNaN(end)) return false;
+                    return currentDate < end;
+                });
+
+                if (notams.length > 0) container.innerHTML = '';
+
+                const template = document.getElementsByTagName("template")[0];
+                const el = template.content.querySelector('a.notam');
+
+                for (let notam of notams) {
+                    const a = document.importNode(el, true);
+                    const start = new Date(notam.start);
+                    const end = new Date(notam.end);
+
+                    a.setAttribute('href', notam.link);
+                    a.querySelector('.link').textContent = notam.link;
+                    a.querySelector('.title').textContent = notam.title;
+
+                    if (start < currentDate) {
+                        a.querySelector('.start').innerHTML = '<strong>Currently In effect</strong>';
+                    } else {
+                        a.querySelector('.start').innerHTML += !isNaN(start) ?
+                            `${start.getUTCDate()}/${start.getUTCMonth() + 1}/${start.getUTCFullYear()} ${start.getUTCHours() < 10 ?
+                                '0' + start.getUTCHours() : start.getUTCHours()}${start.getUTCMinutes() < 10 ?
+                                '0' + start.getUTCMinutes() :
+                                start.getUTCMinutes()}z (${start.getDate()}/${start.getMonth() + 1}/${start.getFullYear()} ${start.getHours() < 10 ?
+                                '0' + start.getHours() : start.getHours()}${start.getMinutes() < 10 ?
+                                '0' + start.getMinutes() : start.getMinutes()} ${Intl.DateTimeFormat()
+                                .resolvedOptions().timeZone})` :
+                            'Error Getting Date';
+                    }
+                    a.querySelector('.end').innerHTML += !isNaN(end) ?
+                        `${end.getUTCDate()}/${end.getUTCMonth() + 1}/${end.getUTCFullYear()} ${end.getUTCHours() < 10 ?
+                            '0' + end.getUTCHours() : end.getUTCHours()}${end.getUTCMinutes() < 10 ?
+                            '0' + end.getUTCMinutes() :
+                            end.getUTCMinutes()}z (${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()} ${end.getHours() < 10 ?
+                            '0' + end.getHours() : end.getHours()}${end.getMinutes() < 10 ?
+                            '0' + end.getMinutes() : end.getMinutes()} ${Intl.DateTimeFormat()
+                            .resolvedOptions().timeZone})` :
+                        'Error Getting Date';
+                    a.querySelector(
+                        '.author').textContent = `${notam.author.first_name} ${notam.author.last_name} (${notam.author.cid})`;
+
+                    const ra = a.querySelector('.restrictedAirspace');
+                    if (notam.restrictedAirspace.length > 0) {
+                        for (let r of notam.restrictedAirspace) {
+                            const e = document.createElement('li');
+                            e.textContent = r;
+
+                            ra.appendChild(e);
+                        }
+                    } else {
+                        ra.outerHTML = '';
+                    }
+
+                    a.querySelector('.type').textContent = notam.type.replace(/(-|^)([^-]?)/g, (_, prep, letter) => {
+                        return (prep && ' ') + letter.toUpperCase();
+                    });
+
+                    container.appendChild(a);
+                }
+            }
+        }
+    }
+</script>
+</body>
+</html>
